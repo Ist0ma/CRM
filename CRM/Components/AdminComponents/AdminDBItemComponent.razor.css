@@ -1,0 +1,36 @@
+﻿.table td {
+    text-align: left;
+}
+
+.table tr {
+    border-bottom: 1px solid #DDD;
+}
+
+.tooltip1 {
+}
+
+    .tooltip1 .tooltip-text {
+        visibility: hidden;
+        position: absolute;
+        background-color: darkgray;
+        padding: 5px;
+        border-radius: 5px;
+        white-space: nowrap;
+    }
+
+    .tooltip1:hover .tooltip-text {
+        visibility: visible;
+    }
+.container {
+    overflow: auto; /* Чтобы контейнер обтекал его содержимое */
+}
+
+.left-column {
+    float: left;
+    width: 50%; /* Выберите желаемую ширину */
+}
+
+.right-column {
+    float: right;
+    width: 50%; /* Выберите желаемую ширину */
+}

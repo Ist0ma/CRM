@@ -1,0 +1,146 @@
+﻿@page "/user/base/{Id:int?}"
+@using CRM.Authentication;
+@using CRM.Services;
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+@inject NavigationManager navigationManager;
+@inject TelegramService telegram;
+@inject IJSRuntime JS;
+
+
+<AuthorizeView Roles="User">
+    <Authorized>
+        @if (CurrentItem != null)
+        {
+            <p>
+                Phone: @CurrentItem.PhoneNumber <button  id="wallet" class="oi oi-arrow-bottom" @onclick="OnCopyPhoneClick"></button>
+            </p>
+            <p>Name: @CurrentItem.PersonName</p>
+            if (!string.IsNullOrEmpty(CurrentItem.City))
+            {
+                <p>City: @CurrentItem.City</p>
+            }
+            if (!string.IsNullOrEmpty(CurrentItem.Region))
+            {
+                <p>Region: @CurrentItem.Region</p>
+            }
+            if (!string.IsNullOrEmpty(CurrentItem.Address))
+            {
+                <p>Address: @CurrentItem.Address</p>
+            }
+            if (!string.IsNullOrEmpty(CurrentItem.DateOfBirth))
+            {
+                <p>DateOfBirth: @CurrentItem.DateOfBirth</p>
+            }
+            if (!string.IsNullOrEmpty(CurrentItem.AdditionalInfo))
+            {
+                foreach (var item in CurrentItem.AdditionalInfo.Split(','))
+                {
+                    <p>@item</p>
+                }
+            }
+
+            <button @onclick="NotAnsweredButtonClick" class="btn btn-primary">Not Answered</button>
+            <button @onclick="AnsweredButtonClick" class="btn btn-primary">Answered</button>
+            <button @onclick="SendToMenegerButtonClick" class="btn btn-primary">Send to meneger</button>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <PageNotFound></PageNotFound>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+    private Base Base { get; set; }
+    private BaseItem CurrentItem { get; set; }
+    private UserSession currentUserSession;
+    [Inject]
+    private ProtectedSessionStorage sessionStorage { get; set; }
+    [Inject]
+    private DbService db { get; set; }
+
+    private async Task OnCopyPhoneClick()
+    {
+        await JS.InvokeVoidAsync("Copy", CurrentItem.PhoneNumber);
+    }
+
+    private async Task NotAnsweredButtonClick()
+    {
+        CurrentItem.State = State.NotAnswered;
+        await db.UpdateBaseItem(CurrentItem);
+        TakeNextItem();
+    }
+
+    private async Task AnsweredButtonClick()
+    {
+        CurrentItem.State = State.Answered;
+        await db.UpdateBaseItem(CurrentItem);
+        TakeNextItem();
+    }
+    private async Task SendToMenegerButtonClick()
+    {
+        CurrentItem.State = State.SendedToMeneger;
+        await db.UpdateBaseItem(CurrentItem);
+        telegram.SendMessageToAdmin($"{currentUserSession.Login}\n {CurrentItem.ToString()}");
+        TakeNextItem();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                if (Id.HasValue && db.GetAllBases().Any(b => b.Id == Id))
+                {
+
+                    var userSessionStorageResult = await sessionStorage.GetAsync<UserSession>("UserSession");
+
+                    currentUserSession = userSessionStorageResult.Success ? userSessionStorageResult.Value : null;
+
+                    Base @base = await db.GetBase(Id.Value);
+                    if (@base.Users.Any(u => u.Id == currentUserSession.Id))
+                    {
+                        Base = @base;
+                    }
+                    else
+                    {
+                        navigationManager.NavigateTo("/", true);
+                    }
+                }
+                else
+                {
+                    navigationManager.NavigateTo("/", true);
+                }
+
+                await TakeNextItem();
+            }
+            catch (Exception e)
+            {
+
+                throw;
+            }
+        }
+    }
+
+
+    private async Task TakeNextItem()
+    {
+        try
+        {
+            CurrentItem = Base.BaseItems.FirstOrDefault(item => item.State == State.New && (string.IsNullOrEmpty(item.UserLogin) || item.UserLogin == currentUserSession.Login));
+            if (CurrentItem != null)
+            {
+                CurrentItem.UserLogin = currentUserSession.Login;
+                await db.UpdateBaseItem(CurrentItem);
+                StateHasChanged();
+            }
+        }
+        catch (Exception e)
+        {
+            
+            throw;
+        }
+    }
+}

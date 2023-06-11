@@ -1,0 +1,226 @@
+﻿@page "/admin/base/{Id:int?}"
+@using CRM.Services;
+@inject DbService db;
+@inject NavigationManager navigationManager;
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        @if (Base != null)
+        {
+            <h3>AdminDBItemComponent</h3>
+            <button class="admin-button" @onclick="DeleteButtonClick">Удалить Базу</button>
+            <button class="admin-button" @onclick="UsersButtonClick">Пользователи</button>
+            @if (ShowUsers)
+            {
+                <div class="container">
+                    <div class="left-column">
+                        <h4>Selected Users</h4>
+                        <ul>
+                            @foreach (var user in SelectedUsers)
+                            {
+                                <li draggable="true" @onclick="()=>HandleBaseUserClick(user)">@user.Login</li>
+                            }
+                        </ul>
+                    </div>
+                    <div class="right-column">
+                        <h4>Users</h4>
+                        <ul>
+                            @foreach (var user in Users)
+                            {
+                                <li @onclick="()=>HandleUserClick(user)">@user.Login</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+                <button class="admin-button" @onclick="SaveButtonClick">Сохранить</button>
+            }
+            else
+            {
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 7vw">Phone</th>
+                            <th style="width: 17vw">Person Name</th>
+                            @if (ShouldShowCity)
+                            {
+                                <th style="width: 7vw">City</th>
+                            }
+                            @if (ShouldShowRegion)
+                            {
+                                <th style="width: 15vw">Region</th>
+                            }
+                            @if (ShouldShowAddress)
+                            {
+                                <th style="width: 15vw">Address</th>
+                            }
+                            @if (ShouldShowDateOfBirth)
+                            {
+                                <th style="width: 7vw">Date of Birth</th>
+                            }
+                            @if (ShouldShowAdditionalInfo)
+                            {
+                                <th style="width: 13vw">Additional Info</th>
+                            }
+                            <th style="width: 5vw">State</th>
+                            <th style="width: 5vw">User</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Base.BaseItems)
+                        {
+                            <tr>
+                                <td>@item.PhoneNumber</td>
+                                <td>@item.PersonName</td>
+                                @if (ShouldShowCity)
+                                {
+                                    <td>@item.City</td>
+                                }
+                                @if (ShouldShowRegion)
+                                {
+                                    <th>@item.Region</th>
+                                }
+                                @if (ShouldShowAddress)
+                                {
+                                    <th>@item.Address</th>
+                                }
+                                @if (ShouldShowDateOfBirth)
+                                {
+                                    <th>@item.DateOfBirth</th>
+                                }
+                                @if (ShouldShowAdditionalInfo)
+                                {
+                                    <th class="tooltip1">
+                                        @if (item.AdditionalInfo.Length > 25)
+                                        {
+                                            @string.Concat(item.AdditionalInfo.Substring(0, 25), "...")
+
+                                        }
+                                        else
+                                        {
+                                            @item.AdditionalInfo
+                                        }
+
+                                        <div class="tooltip-text">
+                                            @if (!string.IsNullOrEmpty(item.AdditionalInfo))
+                                            {
+                                                foreach (var substr in item.AdditionalInfo.Split(','))
+                                                {
+                                                    <p>@substr</p>
+                                                }
+                                            }
+                                        </div>
+                                    </th>
+                                }
+                                <td>@item.State.ToString()</td>
+                                <td>@item.UserLogin</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    </Authorized>
+    <NotAuthorized>
+        <PageNotFound></PageNotFound>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+    private Base Base { get; set; }
+    private bool ShowUsers { get; set; } = false;
+    private List<User> SelectedUsers { get; set; }
+    private List<User> Users { get; set; }
+
+    private bool ShouldShowCity
+    {
+        get
+        {
+            return Base.BaseItems.Any(item => item.City != null);
+        }
+    }
+    private bool ShouldShowRegion
+    {
+        get
+        {
+            return Base.BaseItems.Any(item => item.Region != null);
+        }
+    }
+    private bool ShouldShowAddress
+    {
+        get
+        {
+            return Base.BaseItems.Any(item => item.Address != null);
+        }
+    }
+    private bool ShouldShowDateOfBirth
+    {
+        get
+        {
+            return Base.BaseItems.Any(item => item.DateOfBirth != null);
+        }
+    }
+    private bool ShouldShowAdditionalInfo
+    {
+        get
+        {
+            return Base.BaseItems.Any(item => item.AdditionalInfo != null);
+        }
+    }
+    protected override async void OnParametersSet()
+    {
+        if (Id.HasValue && db.GetAllBases().Any(b => b.Id == Id))
+        {
+            Base = await db.GetBase(Id.Value);
+
+            Users = db.GetAllUsers().Where(u => u.Role == "User").ToList();
+            Users.RemoveAll(u => Base.Users.Contains(u));
+        }
+        else
+        {
+            navigationManager.NavigateTo("/admin/databases", true);
+        }
+        StateHasChanged();
+    }
+    protected async void DeleteButtonClick(MouseEventArgs e)
+    {
+        if (Id.HasValue)
+        {
+            await db.DeleteBase(Id.Value);
+        }
+        navigationManager.NavigateTo("/admin/databases", true);
+    }
+    protected async void UsersButtonClick(MouseEventArgs e)
+    {
+        ShowUsers = !ShowUsers;
+        SelectedUsers = Base.Users.ToList();
+        if (!ShowUsers)
+        {
+            navigationManager.NavigateTo($"/admin/base/{Id}", true);
+        }
+    }
+
+    private async Task HandleUserClick(User user)
+    {
+        SelectedUsers.Add(user);
+        Users.Remove(user);
+    }
+
+    private async Task HandleBaseUserClick(User user)
+    {
+        SelectedUsers.Remove(user);
+        Users.Add(user);
+    }
+
+    private async Task SaveButtonClick()
+    {
+        Base.Users = SelectedUsers;
+        await db.UpdateBase(Base);
+        foreach (var user in Base.Users)
+        {
+            user.Bases.Add(Base);
+            await db.UpdateUser(user);
+        }
+        navigationManager.NavigateTo($"/admin/base/{Id}", true);
+    }
+}

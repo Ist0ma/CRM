@@ -1,0 +1,71 @@
+﻿@page "/admin/users"
+@using CRM.Services;
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <h3>AdminUsersListComponent</h3>
+        <CascadingValue Value="this" IsFixed="true">
+            <table class="table">
+                <tr>
+                    <th>Логин</th>
+                    <th>Пароль</th>
+                </tr>
+                @foreach (var user in users)
+                {
+                <tr>
+                        @if (user.Login != "Логин")
+                        {
+                            <AdminUserComponent User="user" isEditing="false"></AdminUserComponent>
+                        }
+                        else
+                        {
+                            <AdminUserComponent User="user" isEditing="true"></AdminUserComponent>
+                        }
+                </tr>
+
+                }
+            </table>
+            <button class="admin-button" @onclick="AddButtonClick">Добавить пользователя</button>
+        </CascadingValue>
+    </Authorized>
+    <NotAuthorized>
+        <PageNotFound></PageNotFound>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [Inject]
+    private DbService db { get; set; }
+    [Inject]
+    private NavigationManager navigationManager { get; set; }
+
+    private List<User> users;
+
+    protected override void OnParametersSet()
+    {
+        users = db.GetAllUsers().Where(u => u.Role == "User").ToList();
+    }
+
+    public void DeleteUser(User user)
+    {
+        db.DeleteUser(user);
+        navigationManager.NavigateTo("/admin/Users", true);
+    }
+
+    public void UpdateUser(User user)
+    {
+        db.UpdateUser(user);
+        //StateHasChanged();
+    }
+
+    protected async void AddButtonClick(MouseEventArgs e)
+    {
+        User newUser = new User()
+            {
+                Login = "Логин",
+                Password = "Пароль",
+                Role = "User"
+            };
+        users.Add(newUser);
+        StateHasChanged();
+    }
+}

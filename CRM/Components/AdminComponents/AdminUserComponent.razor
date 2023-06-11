@@ -1,0 +1,86 @@
+﻿<AuthorizeView Roles="Admin">
+    <Authorized>
+        @if (isEditing)
+        {
+            <td>
+                <input class="table-input" style="width: 20vw" type="text" value="@User.Login" @oninput="OnInputLogin" />
+            </td>
+            <td>
+                <input class="table-input" style="width: 20vw" type="text" value="@User.Password" @oninput="OnInputPassword" />
+            </td>
+        }
+        else
+        {
+            <td style="width: 20vw">@User.Login</td>
+            <td style="width: 20vw">@User.Password</td>
+        }
+        <td class="edit-buttons">
+            <button class="edit" @onclick="OnEditClick">@EditingButtonText</button>
+            <button class="delete" @onclick="OnDeleteClick">Delete</button>
+        </td>
+    </Authorized>
+    <NotAuthorized>
+        <PageNotFound></PageNotFound>
+    </NotAuthorized>
+</AuthorizeView>
+@code {
+    [Parameter]
+    public User User { get; set; }
+    [Parameter]
+    public bool isEditing { get; set; }
+    [CascadingParameter]
+    public AdminUsersListComponent AdminUsersListComponent { get; set; }
+
+    public User UserToEdit { get; set; }
+
+    private string EditingButtonText
+    {
+        get
+        {
+            if (isEditing)
+            {
+                UserToEdit = User;
+                return "Save";
+            }
+            if (UserToEdit != null)
+            {
+                AdminUsersListComponent.UpdateUser(UserToEdit);
+            }
+            return "Edit";
+        }
+    }
+
+    protected async void OnEditClick(MouseEventArgs e)
+    {
+        isEditing = !isEditing;
+    }
+
+    protected async void OnDeleteClick(MouseEventArgs e)
+    {
+        try
+        {
+            AdminUsersListComponent.DeleteUser(User);
+        }
+        catch (Exception ex)
+        {
+           
+        }
+    }
+
+    private void OnInputLogin(ChangeEventArgs e)
+    {
+        string value = (string)e.Value;
+        if (value != "")
+        {
+            User.Login = value;
+        }
+    }
+    private void OnInputPassword(ChangeEventArgs e)
+    {
+        string value = (string)e.Value;
+        if (value != "")
+        {
+            User.Password = value;
+        }
+    }
+}

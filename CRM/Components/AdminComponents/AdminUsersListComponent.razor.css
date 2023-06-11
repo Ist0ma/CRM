@@ -1,0 +1,12 @@
+﻿table.table {
+    width: 100%;
+}
+
+.table th {
+    text-align: left;
+    padding: 0.25em;
+}
+
+.table tr {
+    border-bottom: 1px solid #DDD;
+}

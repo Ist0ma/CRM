@@ -1,0 +1,20 @@
+﻿@page "/"
+@using CRM.Components.AdminComponents
+@using CRM.Components.UserComponents
+
+<PageTitle>CRM</PageTitle>
+
+<h1>CRM</h1>
+
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <AdminComponent></AdminComponent>
+    </Authorized>
+</AuthorizeView>
+
+<AuthorizeView Roles="User">
+    <Authorized>
+        <UserComponent></UserComponent>
+    </Authorized>
+</AuthorizeView>

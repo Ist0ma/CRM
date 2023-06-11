@@ -1,0 +1,40 @@
+﻿@using CRM.Authentication;
+@using CRM.Services;
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+@inject AuthenticationStateProvider AuthenticationStateProvider;
+@inject DbService db;
+@if (currentUserSession != null)
+{
+    <h3>@currentUserSession.Login ваши базы:</h3>
+    <div class="flex-container">
+        @foreach (var item in bases)
+        {
+            <a href="/user/base/@item.Id">
+                <div class="square">
+                    <div class="content">
+                        <p>База @item.Name</p>
+                        <p>К-во номеров @item.Count</p>
+                    </div>
+                </div>
+            </a>
+        }
+    </div>
+}
+
+@code {
+
+    private UserSession currentUserSession;
+    private List<Base> bases;
+    [Inject]
+    private ProtectedSessionStorage sessionStorage { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var userSessionStorageResult = await sessionStorage.GetAsync<UserSession>("UserSession");
+        
+        currentUserSession = userSessionStorageResult.Success ? userSessionStorageResult.Value : null;
+
+        bases = (await db.GetAllUserBases(currentUserSession.Id)).ToList();
+    }
+}
+

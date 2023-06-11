@@ -1,0 +1,64 @@
+﻿@page "/login"
+@using CRM.Services;
+@using CRM.Authentication;
+
+<div class="row">
+    <div class="col-lg-4 offset-lg-4 pt-4 pb-4 border">
+        <div class="mb-3 text-center">
+            <h3>Login</h3>
+        </div>
+        <div class="mb-3">
+            <label>UserName</label>
+            <input @bind="_login" class="form-control" placeholder="Login" />
+        </div>
+        <div class="mb-3">
+            <label>Password</label>
+            <input @bind="_password" class="form-control" placeholder="Password" type="password" />
+        </div>
+        <div class="mb-3">
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger">@_errorMessage</div>
+            }
+        </div>
+        <div class="mb-3 d-grid gap-2">
+            <button @onclick="Login" class="btn btn-primary">Login</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject]
+    private AuthenticationStateProvider authenticationStateProvider { get; set; }
+    [Inject]
+    private DbService db { get; set; }
+    [Inject]
+    private NavigationManager navigationManager { get; set; }
+
+    private string _login;
+    private string _password;
+    private string _errorMessage;
+
+    private async Task Login()
+    {
+        if (string.IsNullOrEmpty(_login) || string.IsNullOrEmpty(_password))
+        {
+            _errorMessage = "Please enter both login and password.";
+            return;
+        }
+
+        var users = db.GetAllUsers().ToList();
+        var hashedPassword = db.HashPassword(_password);
+        var user = db.Login(_login, hashedPassword);
+        if (user == null || user.Password != hashedPassword)
+        {
+            _errorMessage = "Invalid login or password.";
+            return;
+        }
+
+        var stateProvider = (CustomAuthenticationStateProvider)authenticationStateProvider;
+        await stateProvider.UpdateAuthenticationState(new UserSession() { Id = user.Id, Login = user.Login, Role = user.Role });
+
+        navigationManager.NavigateTo("/");
+    }
+}

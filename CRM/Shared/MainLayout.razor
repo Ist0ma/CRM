@@ -1,0 +1,47 @@
+﻿@using CRM.Authentication;
+@inherits LayoutComponentBase
+
+<PageTitle>CRM</PageTitle>
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+
+        <AuthorizeView Roles="Admin,User">
+            <Authorized>
+                <div class="top-row px-4">
+                    <a @onclick=Logout>Выйти</a>
+                </div>
+            </Authorized>
+
+            <NotAuthorized>
+                <div class="top-row px-4">
+                    <a href="/login">Войти</a>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code
+{
+    [Inject]
+    private AuthenticationStateProvider authenticationStateProvider { get; set; }
+    [Inject]
+    private NavigationManager navigationManager { get; set; }
+
+    private void Logout()
+    {
+        var stateProv = (CustomAuthenticationStateProvider)authenticationStateProvider;
+        stateProv.UpdateAuthenticationState(null);
+
+        navigationManager.NavigateTo("/");
+    }
+}

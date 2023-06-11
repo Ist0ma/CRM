@@ -1,0 +1,80 @@
+﻿@page "/admin/databases"
+@using CRM.Services;
+@using Microsoft.EntityFrameworkCore
+@inject DbService db
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <h3>AdminDBListComponent</h3>
+
+        <div class="input-container">
+            <label for="file-upload" class="file-upload-label">
+                <span class="file-upload-text">Выберите файл</span>
+                <span class="file-selected-text">@selectedFileName</span>
+            </label>
+            <InputFile id="file-upload" OnChange="HandleFileSelection" class="file-upload" hidden/>
+            <input class="base-name-input" placeholder="Название Базы" @bind="Name" />
+            <button class="admin-button" @onclick="AddButtonClick" disabled="@IsAddButtonDisabled">Добавить Базу</button>
+        </div>
+
+
+        <div class="flex-container">
+            @if (bases != null)
+            {
+                @foreach (var item in bases)
+                {
+                    <a href="/admin/base/@item.Id" class="base-link">
+                        <div class="square">
+                            <div class="content">
+                                <p class="base-name">@item.Name</p>
+                                <p class="base-count">К-во номеров: @item.Count</p>
+                            </div>
+                        </div>
+                    </a>
+                }
+            }
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <PageNotFound></PageNotFound>
+    </NotAuthorized>
+</AuthorizeView>
+
+
+@code {
+    [Inject]
+    private NavigationManager navigationManager { get; set; }
+    [Inject]
+    private ExcelParserService excelParserService { get; set; }
+    private string Name { get; set; }
+
+    private IBrowserFile selectedFile;
+    private string selectedFileName = "Файл не выбран";
+
+    private bool IsAddButtonDisabled => string.IsNullOrEmpty(selectedFileName) || string.IsNullOrEmpty(Name);
+
+    private List<Base> bases;
+
+    protected async void AddButtonClick(MouseEventArgs e)
+    {
+        if (selectedFile != null)
+        {
+            MemoryStream stream = new MemoryStream();
+            await selectedFile.OpenReadStream().CopyToAsync(stream);
+            stream.Position = 0;
+            var entities = await excelParserService.ParseExcel(stream);
+            await db.CreateBase(new Base() { Name = Name, BaseItems = entities.ToList(), Count = entities.Count() });
+            navigationManager.NavigateTo(navigationManager.Uri, forceLoad: true);
+        }
+    }
+
+    private async Task HandleFileSelection(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        selectedFileName = selectedFile.Name;
+    }
+
+    protected async override Task OnParametersSetAsync()
+    {
+        bases = db.GetAllBases().ToList();
+    }
+}
